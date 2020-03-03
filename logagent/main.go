@@ -7,6 +7,7 @@ import (
 	"logagent/etcd"
 	"logagent/kafka"
 	"logagent/taillog"
+	"sync"
 	"time"
 )
 
@@ -26,7 +27,7 @@ func main() {
 	fmt.Println("load ini success.")
 
 	//2 初始化kafka连接
-	err = kafka.Init([]string{cfg.KafkaConf.Address})
+	err = kafka.Init([]string{cfg.KafkaConf.Address}, cfg.KafkaConf.ChanMaxSize)
 	if err != nil {
 		fmt.Printf("init Kafka failed,err:%v\n", err)
 		return
@@ -54,33 +55,19 @@ func main() {
 	//3.2 派一个哨兵去监视日志收集项的变化（有变化及时通知我的logAgent实现热加载配置）
 
 	//4 收集日志发往kafka
-	for index, value := range logEntryConf {
-
-		fmt.Printf("index:%v value:%v\n", index, value)
-
-		task, err := taillog.NewTailTask(value.Path, value.Topic)
-		if err != nil {
-			fmt.Printf("taillog new tail task failed,err:%v\n", err)
-			return
-		}
-
-		for {
-			select {
-			case line := <-task.ReadChan():
-
-				fmt.Println("get tail msg text: ", line.Text)
-
-				err := kafka.SendMsg(value.Topic, line.Text)
-				if err != nil {
-					fmt.Printf("send msg to kafka send ,err:%v\n", err)
-					continue
-				}
-			default:
-				time.Sleep(time.Second)
-			}
-
-		}
-
+	//4.1 循环每个日志收集项，创建TailObj
+	err = taillog.Init(logEntryConf)
+	if err != nil {
+		fmt.Printf("init taillog failed,err:%v\n", err)
+		return
 	}
+
+	fmt.Println("init taillog success.")
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	wg.Wait()
+
 
 }
