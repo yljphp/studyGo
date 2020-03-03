@@ -3,6 +3,8 @@ package taillog
 import (
 	"fmt"
 	"github.com/hpcloud/tail"
+	"logagent/kafka"
+	"time"
 )
 
 // TailTask： 一个日志收集的任务
@@ -38,7 +40,29 @@ func (t *TailTask) init() (err error) {
 		fmt.Println("tail file failed, err:", err)
 	}
 
+	go t.run()
+
 	return
+}
+
+func (t *TailTask) run() {
+
+	for {
+
+		select {
+
+		case line := <-t.instance.Lines:
+
+			//把日志发送到通道中
+			//kafka中有单独的goroutine去取日志，然后发到kafka中
+			kafka.SendChan(t.topic, line.Text)
+
+		default:
+			time.Sleep(time.Millisecond * 50)
+
+		}
+
+	}
 }
 
 func (t *TailTask) ReadChan() <-chan *tail.Line {

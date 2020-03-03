@@ -3,14 +3,21 @@ package kafka
 import (
 	"fmt"
 	"github.com/Shopify/sarama"
+	"time"
 )
 
 var (
 	// 声明一个全局的连接kafka的生产者client
-	client sarama.SyncProducer
+	client      sarama.SyncProducer
+	logDataChan chan *logData
 )
 
-func Init(addrs []string) (err error) {
+type logData struct {
+	topic string
+	data  string
+}
+
+func Init(addrs []string, chanMaxSize int) (err error) {
 
 	config := sarama.NewConfig()
 
@@ -24,22 +31,52 @@ func Init(addrs []string) (err error) {
 		fmt.Println("producer closed, err:", err)
 		return
 	}
+
+	//初始化chan
+	logDataChan = make(chan *logData, chanMaxSize)
+
+	//后台启动消费任务
+	go sendMsg()
+
 	return
 }
 
-func SendMsg(topic, data string) (err error) {
+func SendChan(topic, data string) {
 
-	message := &sarama.ProducerMessage{
-		Topic: topic,
-		Value: sarama.StringEncoder(data),
+	logDataChan <- &logData{
+		topic,
+		data,
+	}
+}
+
+/**
+真正的往kafka中扔数据
+
+*/
+func sendMsg() {
+
+	for {
+
+		select {
+		case tmpLog := <-logDataChan:
+
+			message := &sarama.ProducerMessage{
+				Topic: tmpLog.topic,
+				Value: sarama.StringEncoder(tmpLog.data),
+			}
+
+			pid, offset, err := client.SendMessage(message)
+			if err != nil {
+				fmt.Println("send msg failed, err:", err)
+				return
+			}
+			fmt.Printf("pid:%v offset:%v\n", pid, offset)
+
+		default:
+			time.Sleep(time.Millisecond * 50)
+
+		}
+
 	}
 
-	pid, offset, err := client.SendMessage(message)
-	if err != nil {
-		fmt.Println("send msg failed, err:", err)
-		return
-	}
-	fmt.Printf("pid:%v offset:%v\n", pid, offset)
-
-	return
 }
