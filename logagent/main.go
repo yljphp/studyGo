@@ -52,22 +52,27 @@ func main() {
 
 	fmt.Printf("get conf from etcd success, %v\n", logEntryConf)
 
-	//3.2 派一个哨兵去监视日志收集项的变化（有变化及时通知我的logAgent实现热加载配置）
+
+
 
 	//4 收集日志发往kafka
 	//4.1 循环每个日志收集项，创建TailObj
-	err = taillog.Init(logEntryConf)
-	if err != nil {
-		fmt.Printf("init taillog failed,err:%v\n", err)
-		return
-	}
+	// 因为NewConfChan访问了tskMgr的newConfChan,
+	//这个channel是在taillog.Init(logEntryConf) 执行的初始化
+	taillog.Init(logEntryConf)
 
 	fmt.Println("init taillog success.")
 
+
+	//3.4 派一个哨兵去监视日志收集项的变化（有变化及时通知我的logAgent实现热加载配置）
+	// 因为NewConfChan访问了tskMgr的newConfChan,
+	//这个channel是在taillog.Init(logEntryConf) 执行的初始化
+	confChan := taillog.NewConfChan()
 	var wg sync.WaitGroup
 	wg.Add(1)
 
-	wg.Wait()
+	go etcd.WatchConf(cfg.EtcdConf.LogKey,confChan)
 
+	wg.Wait()
 
 }

@@ -1,10 +1,10 @@
 package taillog
 
 import (
+	"context"
 	"fmt"
 	"github.com/hpcloud/tail"
 	"logagent/kafka"
-	"time"
 )
 
 // TailTask： 一个日志收集的任务
@@ -12,13 +12,20 @@ type TailTask struct {
 	path     string
 	topic    string
 	instance *tail.Tail
+	// 为了能实现退出t.run()
+	ctx        context.Context
+	cancelFunc context.CancelFunc
 }
 
 func NewTailTask(path, topic string) (tailObj *TailTask, err error) {
 
+	ctx, cancel := context.WithCancel(context.Background())
+
 	tailObj = &TailTask{
 		path:  path,
 		topic: topic,
+		ctx:ctx,
+		cancelFunc:cancel,
 	}
 
 	err = tailObj.init()
@@ -51,15 +58,16 @@ func (t *TailTask) run() {
 
 		select {
 
-		case line := <-t.instance.Lines:
-
-			//把日志发送到通道中
-			//kafka中有单独的goroutine去取日志，然后发到kafka中
+		case <- t.ctx.Done():
+			fmt.Printf("tail task:%s_%s 结束了...\n",t.path, t.topic)
+			return
+		case line := <- t.instance.Lines :// 从tailObj的通道中一行一行的读取日志数据
+			// 3.2 发往Kafka
+			//kafka.SendToKafka(t.topic, line.Text) // 函数调用函数
+			// 先把日志数据发到一个通道中
+			fmt.Printf("get log data from %s success, log:%v\n", t.path, line.Text)
 			kafka.SendChan(t.topic, line.Text)
-
-		default:
-			time.Sleep(time.Millisecond * 50)
-
+			// kafka那个包中有单独的goroutine去取日志数据发到kafka
 		}
 
 	}

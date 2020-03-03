@@ -33,7 +33,7 @@ func Init(addr []string, timeout time.Duration) (err error) {
 
 }
 
-func GetConf(key string) (logEntryConf []*LogEntry,err error) {
+func GetConf(key string) (logEntryConf []*LogEntry, err error) {
 
 	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second)
 
@@ -54,4 +54,29 @@ func GetConf(key string) (logEntryConf []*LogEntry,err error) {
 		}
 	}
 	return
+}
+
+func WatchConf(key string, newConfCh chan<- []*LogEntry) {
+
+	ch := cli.Watch(context.Background(), key)
+
+	// 从通道尝试取值(监视的信息)
+	for resp := range ch{
+		for _, evt := range resp.Events{
+			fmt.Printf("Type:%v key:%v value:%v\n", evt.Type, string(evt.Kv.Key), string(evt.Kv.Value))
+			// 通知taillog.tskMgr
+			// 1. 先判断操作的类型
+			var newConf []*LogEntry
+			if evt.Type != clientv3.EventTypeDelete {
+				// 如果是删除操作，手动传递一个空的配置项
+				err := json.Unmarshal(evt.Kv.Value, &newConf)
+				if err != nil {
+					fmt.Printf("unmarshal failed, err:%v\n", err)
+					continue
+				}
+			}
+			fmt.Printf(" get new conf:%v\n", newConf)
+			newConfCh <- newConf
+		}
+	}
 }
