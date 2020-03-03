@@ -5,12 +5,12 @@ import (
 	"github.com/Shopify/sarama"
 )
 
-var(
+var (
 	// 声明一个全局的连接kafka的生产者client
 	client sarama.SyncProducer
 )
 
-func Init(addrs []string)(err error) {
+func Init(addrs []string) (err error) {
 
 	config := sarama.NewConfig()
 
@@ -24,5 +24,22 @@ func Init(addrs []string)(err error) {
 		fmt.Println("producer closed, err:", err)
 		return
 	}
+	return
+}
+
+func SendMsg(topic, data string) (err error) {
+
+	message := &sarama.ProducerMessage{
+		Topic: topic,
+		Value: sarama.StringEncoder(data),
+	}
+
+	pid, offset, err := client.SendMessage(message)
+	if err != nil {
+		fmt.Println("send msg failed, err:", err)
+		return
+	}
+	fmt.Printf("pid:%v offset:%v\n", pid, offset)
+
 	return
 }

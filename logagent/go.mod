@@ -19,7 +19,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.13.0 // indirect
-	github.com/hpcloud/tail v1.0.0 // indirect
+	github.com/hpcloud/tail v1.0.0
 	github.com/jonboulle/clockwork v0.1.0 // indirect
 	github.com/prometheus/client_golang v1.4.1 // indirect
 	github.com/smartystreets/goconvey v1.6.4 // indirect
