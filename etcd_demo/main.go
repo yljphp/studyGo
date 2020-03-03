@@ -39,7 +39,7 @@ func main() {
 	//ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second)
 
 
-	info := `[{"path":"/tmp/web.log","topic":"web_log"},{"path":"/tmp/nginx.log","topic":"nginx_log"}]`
+	info := `[{"path":"/tmp/taillog/web.log","topic":"web_log"},{"path":"/tmp/taillog/nginx.log","topic":"nginx_log"}]`
 
 	resp, err := cli.Put(context.TODO(), "/logagent/config", info)
 	if err != nil {
